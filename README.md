@@ -19,6 +19,9 @@ sublingo translate movie.srt --to zh-TW
 # Translate all video/subtitle files in a directory
 sublingo translate /path/to/videos/
 
+# Recursively scan subdirectories
+sublingo translate /path/to/videos/ -r
+
 # Use Ollama locally
 sublingo translate movie.srt --to es --provider ollama --model llama3.1
 
@@ -121,6 +124,7 @@ sublingo config                        # Show current config
 | `--timeout`        | API timeout in seconds (default: 120)        |
 | `--bilingual`      | Include original text with translation       |
 | `--keep-names`     | Keep personal/place names untranslated       |
+| `-r`, `--recursive`| Recursively scan subdirectories              |
 | `-v`, `--verbose`  | Verbose output                               |
 | `--debug`          | Show full prompts and raw LLM responses      |
 

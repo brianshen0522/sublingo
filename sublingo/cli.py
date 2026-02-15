@@ -13,14 +13,15 @@ from sublingo.utils.file_utils import VIDEO_EXTENSIONS, SUBTITLE_EXTENSIONS
 from sublingo.utils.logger import setup_logging
 
 
-def _collect_files(input_path: Path) -> list[Path]:
+def _collect_files(input_path: Path, recursive: bool = False) -> list[Path]:
     """Collect translatable files from a path (file or directory)."""
     valid_extensions = SUBTITLE_EXTENSIONS | VIDEO_EXTENSIONS
     if input_path.is_file():
         return [input_path]
     if input_path.is_dir():
+        pattern = "**/*" if recursive else "*"
         files = sorted(
-            f for f in input_path.iterdir()
+            f for f in input_path.glob(pattern)
             if f.is_file() and f.suffix.lower() in valid_extensions
         )
         return files
@@ -48,6 +49,7 @@ def cli() -> None:
 @click.option("--timeout", type=float, default=None, help="LLM API timeout in seconds (default: 120)")
 @click.option("--bilingual", is_flag=True, default=False, help="Include original text with translation")
 @click.option("--keep-names", is_flag=True, default=False, help="Keep personal and place names untranslated")
+@click.option("-r", "--recursive", is_flag=True, default=False, help="Recursively scan subdirectories")
 @click.option("-v", "--verbose", is_flag=True, default=False, help="Verbose output")
 @click.option("--debug", is_flag=True, default=False, help="Debug mode: print raw LLM responses")
 def translate(
@@ -65,6 +67,7 @@ def translate(
     timeout: float | None,
     bilingual: bool,
     keep_names: bool,
+    recursive: bool,
     verbose: bool,
     debug: bool,
 ) -> None:
@@ -97,7 +100,7 @@ def translate(
             "Target language required. Use --to or set SUBLINGO_TARGET_LANGUAGE."
         )
 
-    files = _collect_files(input_path)
+    files = _collect_files(input_path, recursive=recursive)
     if not files:
         raise click.ClickException(
             f"No subtitle or video files found in: {input_path}"
