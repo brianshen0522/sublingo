@@ -1,0 +1,5 @@
+click>=8.1
+pysubs2>=1.6
+httpx>=0.27
+python-dotenv>=1.0
+rich>=13.0
