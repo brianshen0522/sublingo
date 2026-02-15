@@ -5,6 +5,8 @@ CLI subtitle translation tool powered by LLMs. Translate `.srt`, `.vtt`, and `.a
 ## Installation
 
 ```bash
+git clone https://github.com/brianshen0522/sublingo.git
+cd sublingo
 pip install -e .
 ```
 
@@ -58,6 +60,23 @@ When `SUBLINGO_TARGET_LANGUAGE` is set, the `--to` flag becomes optional.
 ### Language Codes
 
 Use standard language codes (e.g., `en`, `ja`, `zh-TW`, `zh-CN`, `es`, `fr`). Codes are automatically resolved to full names in prompts (e.g., `zh-TW` becomes "Traditional Chinese").
+
+The mapping is defined in [`sublingo/utils/languages.json`](sublingo/utils/languages.json). Common codes:
+
+| Code    | Language             |
+| ------- | -------------------- |
+| `en`    | English              |
+| `ja`    | Japanese             |
+| `ko`    | Korean               |
+| `zh-CN` | Simplified Chinese   |
+| `zh-TW` | Traditional Chinese  |
+| `es`    | Spanish              |
+| `fr`    | French               |
+| `de`    | German               |
+| `pt`    | Portuguese           |
+| `ru`    | Russian              |
+| `th`    | Thai                 |
+| `vi`    | Vietnamese           |
 
 ```bash
 sublingo languages  # List all supported language codes
