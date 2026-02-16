@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import re
+import threading
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -96,6 +98,7 @@ class BaseLLMProvider(ABC):
         self.api_key = api_key
         self.temperature = temperature
         self.timeout = timeout
+        self._active_client: Any = None  # httpx.Client ref for cancellation
 
     @abstractmethod
     def _call_api(
@@ -105,6 +108,42 @@ class BaseLLMProvider(ABC):
     ) -> str:
         """Make the actual API call and return the raw text response."""
 
+    def _abort_active_request(self) -> None:
+        """Close the active httpx client to abort an in-flight request."""
+        client = self._active_client
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+
+    def _call_api_interruptible(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        cancel_event: threading.Event | None = None,
+        skip_event: threading.Event | None = None,
+    ) -> str:
+        """Run _call_api in a thread so cancel/skip events can interrupt it."""
+        if cancel_event is None and skip_event is None:
+            return self._call_api(system_prompt, user_prompt)
+
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(self._call_api, system_prompt, user_prompt)
+        try:
+            while True:
+                try:
+                    return future.result(timeout=0.3)
+                except concurrent.futures.TimeoutError:
+                    if cancel_event and cancel_event.is_set():
+                        self._abort_active_request()
+                        raise KeyboardInterrupt("Cancelled by user")
+                    if skip_event and skip_event.is_set():
+                        self._abort_active_request()
+                        raise InterruptedError("Skipped by user")
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
+
     def translate(
         self,
         texts: list[dict[str, Any]],
@@ -112,6 +151,8 @@ class BaseLLMProvider(ABC):
         target_lang: str,
         temperature: float | None = None,
         keep_names: bool = False,
+        cancel_event: threading.Event | None = None,
+        skip_event: threading.Event | None = None,
     ) -> list[dict[str, Any]]:
         """Translate a batch of subtitle entries.
 
@@ -121,6 +162,8 @@ class BaseLLMProvider(ABC):
             target_lang: Target language name or code
             temperature: Override default temperature
             keep_names: If True, do not translate personal/place names
+            cancel_event: Event to signal quit (pressed q)
+            skip_event: Event to signal skip (pressed s)
 
         Returns:
             List of {"index": int, "text": str} dicts with translations
@@ -138,7 +181,9 @@ class BaseLLMProvider(ABC):
         last_error = None
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                raw = self._call_api(system_prompt, user_prompt)
+                raw = self._call_api_interruptible(
+                    system_prompt, user_prompt, cancel_event, skip_event,
+                )
                 logger.debug("LLM raw response:\n%s", raw)
                 result = extract_json_array(raw)
                 if len(result) != len(texts):

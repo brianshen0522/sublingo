@@ -137,13 +137,23 @@ def translate_file(
     logger.info("Target language: %s -> %s", target_lang, target_lang_full)
 
     # Detect source language if auto
-    if source_lang == "auto":
-        detected = detect_language(entries, provider)
-        source_lang = detected.get("language", "Unknown")
-        logger.info("Auto-detected source language: %s", source_lang)
-    else:
-        source_lang = resolve_language(source_lang)
-        logger.info("Source language: %s", source_lang)
+    try:
+        if source_lang == "auto":
+            detected = detect_language(
+                entries, provider,
+                cancel_event=_cancel_event, skip_event=_skip_event,
+            )
+            source_lang = detected.get("language", "Unknown")
+            logger.info("Auto-detected source language: %s", source_lang)
+        else:
+            source_lang = resolve_language(source_lang)
+            logger.info("Source language: %s", source_lang)
+    except KeyboardInterrupt:
+        _cleanup_temp_files()
+        raise
+    except InterruptedError:
+        _cleanup_temp_files()
+        raise TranslationSkipped()
 
     # Batch and translate
     batches = create_batches(entries, batch_size)
@@ -176,8 +186,19 @@ def translate_file(
 
             logger.debug("Translating batch %d/%d (%d entries)", i, len(batches), len(batch))
 
-            texts = [{"index": e.index, "text": e.text} for e in batch]
-            results = provider.translate(texts, source_lang, target_lang_full, keep_names=keep_names)
+            try:
+                texts = [{"index": e.index, "text": e.text} for e in batch]
+                results = provider.translate(
+                    texts, source_lang, target_lang_full,
+                    keep_names=keep_names,
+                    cancel_event=_cancel_event,
+                    skip_event=_skip_event,
+                )
+            except KeyboardInterrupt:
+                cancelled = True
+                break
+            except InterruptedError:
+                break
 
             for j, result in enumerate(results):
                 original = batch[j] if j < len(batch) else batch[-1]

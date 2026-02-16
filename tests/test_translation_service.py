@@ -52,7 +52,7 @@ def test_translate_file_e2e(tmp_path):
         mock_provider = mock_get.return_value
         mock_provider.name = "mock"
         mock_provider.model = "test"
-        mock_provider._call_api.return_value = lang_response
+        mock_provider._call_api_interruptible.return_value = lang_response
         mock_provider.translate.return_value = [
             {"index": i, "text": t} for i, t in enumerate([
                 "こんにちは、お元気ですか？",

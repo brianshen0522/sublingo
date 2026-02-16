@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 
 from sublingo.core.subtitle_parser import SubtitleEntry
 from sublingo.providers.base import BaseLLMProvider
@@ -31,6 +32,8 @@ def detect_language(
     entries: list[SubtitleEntry],
     provider: BaseLLMProvider,
     sample_size: int = 5,
+    cancel_event: threading.Event | None = None,
+    skip_event: threading.Event | None = None,
 ) -> dict[str, str]:
     """Detect the language of subtitle entries.
 
@@ -46,7 +49,9 @@ def detect_language(
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            raw = provider._call_api(DETECTION_SYSTEM_PROMPT, user_prompt)
+            raw = provider._call_api_interruptible(
+                DETECTION_SYSTEM_PROMPT, user_prompt, cancel_event, skip_event,
+            )
             logger.debug("Detection raw response (attempt %d):\n%s", attempt, raw)
 
             raw = raw.strip()

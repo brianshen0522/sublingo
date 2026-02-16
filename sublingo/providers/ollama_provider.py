@@ -49,12 +49,16 @@ class OllamaProvider(BaseLLMProvider):
 
         logger.debug("POST %s/api/chat model=%s", self.base_url, self.model)
 
-        with httpx.Client(timeout=self.timeout) as client:
+        client = httpx.Client(timeout=self.timeout)
+        self._active_client = client
+        try:
             resp = client.post(
                 f"{self.base_url}/api/chat",
                 json=payload,
             )
             resp.raise_for_status()
-
-        data = resp.json()
-        return data["message"]["content"]
+            data = resp.json()
+            return data["message"]["content"]
+        finally:
+            self._active_client = None
+            client.close()

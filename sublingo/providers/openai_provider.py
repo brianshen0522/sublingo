@@ -50,13 +50,17 @@ class OpenAIProvider(BaseLLMProvider):
 
         logger.debug("POST %s/chat/completions model=%s", self.base_url, self.model)
 
-        with httpx.Client(timeout=self.timeout) as client:
+        client = httpx.Client(timeout=self.timeout)
+        self._active_client = client
+        try:
             resp = client.post(
                 f"{self.base_url}/chat/completions",
                 json=payload,
                 headers=headers,
             )
             resp.raise_for_status()
-
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+        finally:
+            self._active_client = None
+            client.close()
