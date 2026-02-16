@@ -204,7 +204,8 @@ class BaseLLMProvider(ABC):
                     "Attempt %d/%d failed to parse response: %s",
                     attempt, max_retries, e,
                 )
-                logger.warning("Request (user prompt):\n%s", user_prompt)
+                logger.warning("System prompt:\n%s", system_prompt)
+                logger.warning("User prompt:\n%s", user_prompt)
                 logger.warning("Response:\n%s", raw or "N/A")
 
         raise RuntimeError(
