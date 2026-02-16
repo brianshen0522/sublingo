@@ -13,7 +13,25 @@ from sublingo.utils.file_utils import VIDEO_EXTENSIONS, SUBTITLE_EXTENSIONS
 from sublingo.utils.logger import setup_logging
 
 
-def _collect_files(input_path: Path, recursive: bool = False) -> list[Path]:
+def _is_already_translated(path: Path, target_lang: str) -> bool:
+    """Check if a file looks like it's already a translation output.
+
+    e.g. 'movie.zh-TW.srt' contains target lang 'zh-TW' before the extension.
+    """
+    stem = path.stem
+    parts = stem.rsplit(".", 1)
+    if len(parts) == 2:
+        lang_part = parts[1]
+        if lang_part == target_lang or lang_part.lower() == target_lang.lower():
+            return True
+    return False
+
+
+def _collect_files(
+    input_path: Path,
+    recursive: bool = False,
+    target_lang: str | None = None,
+) -> list[Path]:
     """Collect translatable files from a path (file or directory)."""
     valid_extensions = SUBTITLE_EXTENSIONS | VIDEO_EXTENSIONS
     if input_path.is_file():
@@ -22,7 +40,9 @@ def _collect_files(input_path: Path, recursive: bool = False) -> list[Path]:
         pattern = "**/*" if recursive else "*"
         files = sorted(
             f for f in input_path.glob(pattern)
-            if f.is_file() and f.suffix.lower() in valid_extensions
+            if f.is_file()
+            and f.suffix.lower() in valid_extensions
+            and not (target_lang and _is_already_translated(f, target_lang))
         )
         return files
     return []
@@ -102,7 +122,7 @@ def translate(
             "Target language required. Use --to or set SUBLINGO_TARGET_LANGUAGE."
         )
 
-    files = _collect_files(input_path, recursive=recursive)
+    files = _collect_files(input_path, recursive=recursive, target_lang=config.get("target_language"))
     if not files:
         raise click.ClickException(
             f"No subtitle or video files found in: {input_path}"
