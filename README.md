@@ -125,7 +125,7 @@ sublingo config                        # Show current config
 | `--bilingual`      | Include original text with translation       |
 | `--keep-names`     | Keep personal/place names untranslated       |
 | `-r`, `--recursive`| Recursively scan subdirectories              |
-| `--skip-existing`  | Skip files that already have translated output |
+| `--overwrite`      | Re-translate even if output exists            |
 | `-v`, `--verbose`  | Verbose output                               |
 | `--debug`          | Show full prompts and raw LLM responses      |
 

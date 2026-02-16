@@ -50,7 +50,7 @@ def cli() -> None:
 @click.option("--bilingual", is_flag=True, default=False, help="Include original text with translation")
 @click.option("--keep-names", is_flag=True, default=False, help="Keep personal and place names untranslated")
 @click.option("-r", "--recursive", is_flag=True, default=False, help="Recursively scan subdirectories")
-@click.option("--skip-existing", is_flag=True, default=False, help="Skip if translated file already exists")
+@click.option("--overwrite", is_flag=True, default=False, help="Re-translate even if output file exists")
 @click.option("-v", "--verbose", is_flag=True, default=False, help="Verbose output")
 @click.option("--debug", is_flag=True, default=False, help="Debug mode: print raw LLM responses")
 def translate(
@@ -69,7 +69,7 @@ def translate(
     bilingual: bool,
     keep_names: bool,
     recursive: bool,
-    skip_existing: bool,
+    overwrite: bool,
     verbose: bool,
     debug: bool,
 ) -> None:
@@ -133,7 +133,7 @@ def translate(
     try:
         for i, file in enumerate(files, 1):
             # Check if output already exists
-            if skip_existing and not output:
+            if not overwrite and not output:
                 expected_output = generate_output_path(
                     file, config["target_language"], config.get("output_format"),
                 )
