@@ -50,6 +50,7 @@ def cli() -> None:
 @click.option("--bilingual", is_flag=True, default=False, help="Include original text with translation")
 @click.option("--keep-names", is_flag=True, default=False, help="Keep personal and place names untranslated")
 @click.option("-r", "--recursive", is_flag=True, default=False, help="Recursively scan subdirectories")
+@click.option("--skip-existing", is_flag=True, default=False, help="Skip if translated file already exists")
 @click.option("-v", "--verbose", is_flag=True, default=False, help="Verbose output")
 @click.option("--debug", is_flag=True, default=False, help="Debug mode: print raw LLM responses")
 def translate(
@@ -68,6 +69,7 @@ def translate(
     bilingual: bool,
     keep_names: bool,
     recursive: bool,
+    skip_existing: bool,
     verbose: bool,
     debug: bool,
 ) -> None:
@@ -113,10 +115,23 @@ def translate(
         )
 
     from sublingo.services.translation_service import translate_file
+    from sublingo.utils.file_utils import generate_output_path
 
     click.echo(f"Found {len(files)} file(s) to translate")
 
+    skipped = 0
     for i, file in enumerate(files, 1):
+        # Check if output already exists
+        if skip_existing and not output:
+            expected_output = generate_output_path(
+                file, config["target_language"], config.get("output_format"),
+            )
+            if expected_output.exists():
+                skipped += 1
+                if len(files) > 1:
+                    click.echo(f"[{i}/{len(files)}] Skipped (exists): {expected_output}")
+                continue
+
         if len(files) > 1:
             click.echo(f"\n[{i}/{len(files)}] {file.name}")
         try:
@@ -126,6 +141,9 @@ def translate(
             click.echo(f"Error translating {file.name}: {e}", err=True)
             if len(files) == 1:
                 raise click.ClickException(str(e))
+
+    if skipped:
+        click.echo(f"\nSkipped {skipped} file(s) (already translated)")
 
 
 @cli.command("providers")
