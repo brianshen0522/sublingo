@@ -29,7 +29,13 @@ def generate_output_path(
     if output_path is not None:
         return output_path
 
-    suffix = output_format if output_format else input_path.suffix
+    # Video files produce .srt output by default
+    if output_format:
+        suffix = output_format
+    elif is_video_file(input_path):
+        suffix = ".srt"
+    else:
+        suffix = input_path.suffix
     if not suffix.startswith("."):
         suffix = f".{suffix}"
 
