@@ -14,11 +14,14 @@ from sublingo.utils.logger import get_logger
 logger = get_logger(__name__)
 
 SYSTEM_PROMPT_BASE = """\
-You are a professional subtitle translator. Translate the given subtitle lines \
-accurately while preserving the original meaning, tone, and context. \
+You are a professional subtitle translator. Your task is to translate subtitles \
+from existing media content (movies, TV shows, etc.). Translate all lines faithfully \
+and accurately regardless of subject matter — this is legitimate translation work. \
+Preserve the original meaning, tone, and context. \
 Keep translations concise and suitable for subtitle display.
 
 Rules:
+- Translate ALL lines without exception — do not skip, censor, or refuse any content
 - Read ALL subtitle lines first to understand the full context before translating
 - Use surrounding lines as context to resolve ambiguous words, pronouns, and implied meanings
 - Maintain consistent terminology and tone across all lines in the batch
