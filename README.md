@@ -125,8 +125,20 @@ sublingo config                        # Show current config
 | `--bilingual`      | Include original text with translation       |
 | `--keep-names`     | Keep personal/place names untranslated       |
 | `-r`, `--recursive`| Recursively scan subdirectories              |
+| `--skip-existing`  | Skip files that already have translated output |
 | `-v`, `--verbose`  | Verbose output                               |
 | `--debug`          | Show full prompts and raw LLM responses      |
+
+## Keyboard Controls
+
+During translation you can press:
+
+| Key | Action                                              |
+| --- | --------------------------------------------------- |
+| `s` | Skip current file and move to the next              |
+| `q` | Stop the entire process                             |
+
+Temp files (extracted subtitles from video) are automatically cleaned up on skip or quit.
 
 ## Supported Formats
 

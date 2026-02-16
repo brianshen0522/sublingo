@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,48 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, T
 from sublingo.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Global state for graceful shutdown
+_cancel_event = threading.Event()
+_skip_event = threading.Event()
+_temp_files: list[Path] = []
+
+
+class TranslationSkipped(Exception):
+    """Raised when user presses 's' to skip current file."""
+
+
+def _quit_listener() -> None:
+    """Background thread that listens for key presses: 'q' to quit, 's' to skip."""
+    try:
+        import tty
+        import termios
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            while not _cancel_event.is_set():
+                ch = sys.stdin.read(1)
+                if ch.lower() == "q":
+                    _cancel_event.set()
+                    break
+                elif ch.lower() == "s":
+                    _skip_event.set()
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    except (ImportError, OSError, ValueError):
+        # Not a terminal (e.g. piped input), skip listener
+        pass
+
+
+def _cleanup_temp_files() -> None:
+    """Remove any extracted temporary subtitle files."""
+    for path in _temp_files:
+        if path.exists():
+            path.unlink(missing_ok=True)
+            logger.info("Cleaned up temp file: %s", path)
+    _temp_files.clear()
+
 
 PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     "openai": OpenAIProvider,
@@ -65,11 +109,16 @@ def translate_file(
     debug = config.get("debug", False)
     extracted_sub_path: Path | None = None
 
+    # Reset events for this file
+    _skip_event.clear()
+
     # If input is a video, extract subtitles first
     if is_video_file(input_path):
         logger.info("Extracting subtitles from video: %s", input_path)
         input_path = extract_subtitles(input_path)
         extracted_sub_path = input_path
+        if not debug:
+            _temp_files.append(extracted_sub_path)
 
     # Parse
     logger.info("Parsing subtitles: %s", input_path)
@@ -111,6 +160,7 @@ def translate_file(
         TimeRemainingColumn(),
     )
 
+    cancelled = False
     with progress:
         task = progress.add_task(
             f"Translating to {target_lang_full}",
@@ -118,6 +168,12 @@ def translate_file(
         )
 
         for i, batch in enumerate(batches, 1):
+            if _cancel_event.is_set():
+                cancelled = True
+                break
+            if _skip_event.is_set():
+                break
+
             logger.debug("Translating batch %d/%d (%d entries)", i, len(batches), len(batch))
 
             texts = [{"index": e.index, "text": e.text} for e in batch]
@@ -137,6 +193,16 @@ def translate_file(
 
             progress.advance(task, len(batch))
 
+    if cancelled:
+        logger.info("Translation cancelled by user")
+        _cleanup_temp_files()
+        raise KeyboardInterrupt("Translation cancelled by user (pressed q)")
+
+    if _skip_event.is_set():
+        logger.info("File skipped by user")
+        _cleanup_temp_files()
+        raise TranslationSkipped()
+
     # Build output
     out = output_path or generate_output_path(input_path, target_lang, output_format)
     logger.info("Writing output: %s", out)
@@ -152,6 +218,8 @@ def translate_file(
     # Clean up extracted subtitle file unless in debug mode
     if extracted_sub_path and not debug:
         extracted_sub_path.unlink(missing_ok=True)
+        if extracted_sub_path in _temp_files:
+            _temp_files.remove(extracted_sub_path)
         logger.info("Cleaned up extracted subtitle: %s", extracted_sub_path)
 
     logger.info("Translation complete: %s -> %s", input_path, out)

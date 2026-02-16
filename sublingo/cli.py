@@ -114,33 +114,53 @@ def translate(
             "-o/--output cannot be used when translating a directory."
         )
 
-    from sublingo.services.translation_service import translate_file
+    import threading
+    from sublingo.services.translation_service import (
+        translate_file, _cleanup_temp_files, _quit_listener, _cancel_event,
+        TranslationSkipped,
+    )
     from sublingo.utils.file_utils import generate_output_path
 
+    # Start key listener once for the whole session
+    _cancel_event.clear()
+    listener = threading.Thread(target=_quit_listener, daemon=True)
+    listener.start()
+
     click.echo(f"Found {len(files)} file(s) to translate")
+    click.echo("Press 's' to skip current file, 'q' to stop\n")
 
     skipped = 0
-    for i, file in enumerate(files, 1):
-        # Check if output already exists
-        if skip_existing and not output:
-            expected_output = generate_output_path(
-                file, config["target_language"], config.get("output_format"),
-            )
-            if expected_output.exists():
-                skipped += 1
-                if len(files) > 1:
-                    click.echo(f"[{i}/{len(files)}] Skipped (exists): {expected_output}")
-                continue
+    try:
+        for i, file in enumerate(files, 1):
+            # Check if output already exists
+            if skip_existing and not output:
+                expected_output = generate_output_path(
+                    file, config["target_language"], config.get("output_format"),
+                )
+                if expected_output.exists():
+                    skipped += 1
+                    if len(files) > 1:
+                        click.echo(f"[{i}/{len(files)}] Skipped (exists): {expected_output}")
+                    continue
 
-        if len(files) > 1:
-            click.echo(f"\n[{i}/{len(files)}] {file.name}")
-        try:
-            out = translate_file(file, config, output_path=output)
-            click.echo(f"Translated: {out}")
-        except Exception as e:
-            click.echo(f"Error translating {file.name}: {e}", err=True)
-            if len(files) == 1:
-                raise click.ClickException(str(e))
+            if len(files) > 1:
+                click.echo(f"\n[{i}/{len(files)}] {file.name}")
+            try:
+                out = translate_file(file, config, output_path=output)
+                click.echo(f"Translated: {out}")
+            except TranslationSkipped:
+                click.echo(f"Skipped: {file.name}")
+                continue
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                click.echo(f"Error translating {file.name}: {e}", err=True)
+                if len(files) == 1:
+                    raise click.ClickException(str(e))
+    except KeyboardInterrupt:
+        _cleanup_temp_files()
+        click.echo("\nStopped.")
+        return
 
     if skipped:
         click.echo(f"\nSkipped {skipped} file(s) (already translated)")
