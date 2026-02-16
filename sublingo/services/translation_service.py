@@ -88,7 +88,10 @@ def get_provider(config: dict[str, Any]) -> BaseLLMProvider:
     }
     if config.get("timeout") is not None:
         kwargs["timeout"] = float(config["timeout"])
-    return provider_cls(**kwargs)
+    provider = provider_cls(**kwargs)
+    if config.get("retries") is not None:
+        provider.retries = int(config["retries"])
+    return provider
 
 
 def translate_file(

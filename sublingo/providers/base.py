@@ -46,7 +46,7 @@ Subtitle lines:
 {entries_json}
 """
 
-MAX_RETRIES = 3
+DEFAULT_RETRIES = 10
 
 
 def format_entries_for_prompt(entries: list[dict[str, Any]]) -> str:
@@ -99,6 +99,7 @@ class BaseLLMProvider(ABC):
         self.temperature = temperature
         self.timeout = timeout
         self._active_client: Any = None  # httpx.Client ref for cancellation
+        self.retries = DEFAULT_RETRIES
 
     @abstractmethod
     def _call_api(
@@ -178,8 +179,10 @@ class BaseLLMProvider(ABC):
         logger.debug("System prompt:\n%s", system_prompt)
         logger.debug("User prompt:\n%s", user_prompt)
 
+        max_retries = self.retries
         last_error = None
-        for attempt in range(1, MAX_RETRIES + 1):
+        raw = None
+        for attempt in range(1, max_retries + 1):
             try:
                 raw = self._call_api_interruptible(
                     system_prompt, user_prompt, cancel_event, skip_event,
@@ -196,11 +199,13 @@ class BaseLLMProvider(ABC):
                 last_error = e
                 logger.warning(
                     "Attempt %d/%d failed to parse response: %s",
-                    attempt, MAX_RETRIES, e,
+                    attempt, max_retries, e,
                 )
+                logger.warning("Request (user prompt):\n%s", user_prompt)
+                logger.warning("Response:\n%s", raw or "N/A")
 
         raise RuntimeError(
-            f"Failed to get valid translation after {MAX_RETRIES} attempts: {last_error}"
+            f"Failed to get valid translation after {max_retries} attempts: {last_error}"
         )
 
     @property

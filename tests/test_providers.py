@@ -72,6 +72,7 @@ class TestMockProvider:
 
     def test_translate_all_retries_fail(self):
         provider = MockProvider(responses=["bad", "bad", "bad"])
+        provider.retries = 3
         texts = [{"index": 0, "text": "Hello"}]
         with pytest.raises(RuntimeError, match="Failed to get valid translation"):
             provider.translate(texts, "English", "Spanish")

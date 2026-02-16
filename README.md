@@ -122,6 +122,7 @@ sublingo config                        # Show current config
 | `--batch-size`     | Entries per translation batch (default: 20)  |
 | `--temperature`    | LLM temperature (default: 0.3)               |
 | `--timeout`        | API timeout in seconds (default: 120)        |
+| `--retries`        | Max retry attempts per batch (default: 10)   |
 | `--bilingual`      | Include original text with translation       |
 | `--keep-names`     | Keep personal/place names untranslated       |
 | `-r`, `--recursive`| Recursively scan subdirectories              |

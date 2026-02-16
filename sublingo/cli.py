@@ -67,6 +67,7 @@ def cli() -> None:
 @click.option("--batch-size", type=int, default=None, help="Entries per translation batch")
 @click.option("--temperature", type=float, default=None, help="LLM temperature")
 @click.option("--timeout", type=float, default=None, help="LLM API timeout in seconds (default: 120)")
+@click.option("--retries", type=int, default=None, help="Max retry attempts per batch (default: 10)")
 @click.option("--bilingual", is_flag=True, default=False, help="Include original text with translation")
 @click.option("--keep-names", is_flag=True, default=False, help="Keep personal and place names untranslated")
 @click.option("-r", "--recursive", is_flag=True, default=False, help="Recursively scan subdirectories")
@@ -86,6 +87,7 @@ def translate(
     batch_size: int | None,
     temperature: float | None,
     timeout: float | None,
+    retries: int | None,
     bilingual: bool,
     keep_names: bool,
     recursive: bool,
@@ -107,6 +109,7 @@ def translate(
         "batch_size": batch_size,
         "temperature": temperature,
         "timeout": timeout,
+        "retries": retries,
         "bilingual": bilingual,
         "keep_names": keep_names,
         "debug": debug,
