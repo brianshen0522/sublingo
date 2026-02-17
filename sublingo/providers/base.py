@@ -7,49 +7,56 @@ import json
 import re
 import threading
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 from sublingo.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-SYSTEM_PROMPT_BASE = """\
-You are a professional subtitle translator. Your task is to translate subtitles \
-from existing media content (movies, TV shows, etc.). Translate all lines faithfully \
-and accurately regardless of subject matter — this is legitimate translation work. \
-Preserve the original meaning, tone, and context. \
-Keep translations concise and suitable for subtitle display.
-
-Rules:
-- Translate ALL lines without exception — do not skip, censor, or refuse any content
-- Read ALL subtitle lines first to understand the full context before translating
-- Use surrounding lines as context to resolve ambiguous words, pronouns, and implied meanings
-- Maintain consistent terminology and tone across all lines in the batch
-- Maintain the same number of entries in input and output
-- Preserve line breaks within entries where appropriate for readability
-- Do not add or remove subtitle entries
-{keep_names_rule}\
-- Respond ONLY with a JSON array of objects, each with "index" and "text" keys
-{tvdb_context}"""
-
-KEEP_NAMES_RULE = "- Do NOT translate personal names or place names — keep them in their original form\n"
+PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+SYSTEM_PROMPT_FILE = PROMPTS_DIR / "system_prompt.txt"
+USER_PROMPT_FILE = PROMPTS_DIR / "user_prompt.txt"
+KEEP_NAMES_RULE_FILE = PROMPTS_DIR / "keep_names_rule.txt"
 
 
-def build_system_prompt(keep_names: bool = False, tvdb_context: str | None = None) -> str:
-    ctx_block = f"\n{tvdb_context}\n" if tvdb_context else ""
-    return SYSTEM_PROMPT_BASE.format(
-        keep_names_rule=KEEP_NAMES_RULE if keep_names else "",
-        tvdb_context=ctx_block,
+def _replace_placeholders(template: str, replacements: dict[str, str]) -> str:
+    """Replace {placeholder} tokens in a template string.
+
+    Uses str.replace() instead of str.format() so that literal braces
+    (e.g. JSON examples like {"index": 1}) don't cause errors.
+    """
+    result = template
+    for key, value in replacements.items():
+        result = result.replace("{" + key + "}", value)
+    return result
+
+
+def build_prompts(
+    source_lang: str,
+    target_lang: str,
+    entries_json: str,
+    keep_names: bool = False,
+    tvdb_context: str | None = None,
+) -> tuple[str, str]:
+    """Build both system and user prompts from template files.
+
+    Returns (system_prompt, user_prompt).
+    """
+    keep_names_rule = KEEP_NAMES_RULE_FILE.read_text(encoding="utf-8") if keep_names else ""
+    replacements = {
+        "keep_names_rule": keep_names_rule,
+        "tvdb_context": tvdb_context or "",
+        "source_lang": source_lang,
+        "target_lang": target_lang,
+        "entries_json": entries_json,
+    }
+    system_template = SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
+    user_template = USER_PROMPT_FILE.read_text(encoding="utf-8")
+    return (
+        _replace_placeholders(system_template, replacements),
+        _replace_placeholders(user_template, replacements),
     )
-
-USER_PROMPT_TEMPLATE = """\
-Translate the following subtitle lines from {source_lang} to {target_lang}.
-
-Respond with a JSON array where each element has "index" (the original index) and "text" (the translated text).
-
-Subtitle lines:
-{entries_json}
-"""
 
 DEFAULT_RETRIES = 10
 
@@ -176,11 +183,12 @@ class BaseLLMProvider(ABC):
         Returns:
             List of {"index": int, "text": str} dicts with translations
         """
-        system_prompt = build_system_prompt(keep_names=keep_names, tvdb_context=tvdb_context)
-        user_prompt = USER_PROMPT_TEMPLATE.format(
+        system_prompt, user_prompt = build_prompts(
             source_lang=source_lang,
             target_lang=target_lang,
             entries_json=format_entries_for_prompt(texts),
+            keep_names=keep_names,
+            tvdb_context=tvdb_context,
         )
 
         logger.debug("System prompt:\n%s", system_prompt)

@@ -167,7 +167,35 @@ The feature works automatically when subtitle filenames follow common naming con
 | Dot-separated | `South.Park.S01E01.720p.BluRay.srt` |
 | Numbered | `South Park 1x01.srt` |
 
-Use `--debug` to see the TVDB context injected into the system prompt. If no API key is set, or the series/episode is not found, translation proceeds normally without TVDB context.
+TVDB descriptions are fetched in both the source and target languages. If TVDB doesn't have a translation for a language, the English description is automatically translated via Google Translate as a fallback.
+
+Use `--debug` to see the TVDB context in the prompts. If no API key is set, or the series/episode is not found, translation proceeds normally without context.
+
+## Custom Prompts
+
+All LLM prompts are stored as editable text files in [`sublingo/prompts/`](sublingo/prompts/):
+
+| File | Purpose |
+| --- | --- |
+| `system_prompt.txt` | System prompt — defines the LLM's role and translation rules |
+| `user_prompt.txt` | User prompt — the per-batch translation request with subtitle entries |
+| `keep_names_rule.txt` | Proper noun rules — injected when `--keep-names` is used |
+
+Edit these files directly to customize translation behavior.
+
+The following placeholders are available in both `system_prompt.txt` and `user_prompt.txt`:
+
+| Placeholder | Replaced with |
+| --- | --- |
+| `{keep_names_rule}` | Contents of `keep_names_rule.txt` (empty if `--keep-names` is not used) |
+| `{tvdb_context}` | TVDB series/episode descriptions (empty if not available) |
+| `{source_lang}` | Source language name (e.g., "English") |
+| `{target_lang}` | Target language name (e.g., "Traditional Chinese") |
+| `{entries_json}` | JSON array of subtitle entries to translate |
+
+Placeholders can be placed in either file. Literal curly braces (e.g. JSON examples) are safe to use and won't be interpreted as placeholders.
+
+Use `--debug` to see the final prompts sent to the LLM.
 
 ## Development
 

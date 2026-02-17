@@ -28,3 +28,6 @@ sublingo = "sublingo.main:main"
 
 [tool.setuptools.packages.find]
 include = ["sublingo*"]
+
+[tool.setuptools.package-data]
+sublingo = ["prompts/*.txt", "utils/*.json"]

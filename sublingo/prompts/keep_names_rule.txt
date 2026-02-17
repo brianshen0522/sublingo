@@ -1,0 +1,20 @@
+Do NOT translate the following types of proper nouns.
+Keep them in their original form:
+
+- Personal names
+- Place names
+- Brand names
+- Product names
+- Company names
+- App names
+- Model names and version numbers (e.g., iPhone, iPad, PS5, RTX 4090, iOS 17)
+
+Rules:
+- Preserve official spelling and capitalization.
+- Do NOT translate technical model numbers.
+- If a term is a globally recognized brand or product, keep it unchanged.
+
+However:
+- Translate common nouns normally (e.g., phone, computer, car).
+- Do NOT preserve generic English words.
+- If unsure whether something is a brand or a common noun, translate it.

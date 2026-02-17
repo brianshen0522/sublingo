@@ -25,6 +25,9 @@ venv/
 .coverage
 htmlcov/
 
+# Data
+datas/
+
 # OS
 .DS_Store
 Thumbs.db

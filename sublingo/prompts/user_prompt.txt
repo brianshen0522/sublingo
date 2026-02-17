@@ -1,0 +1,16 @@
+video Details:
+{tvdb_context}
+
+Context:
+The following subtitle entries are from this movie/episode.
+Translate them using full contextual understanding.
+
+Translate from {source_lang} to {target_lang}.
+
+Return ONLY a valid JSON array:
+[
+  {"index": number, "text": "translated text"}
+]
+
+Subtitle entries:
+{entries_json}
