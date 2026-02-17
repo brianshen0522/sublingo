@@ -140,6 +140,7 @@ def translate_file(
     logger.info("Target language: %s -> %s", target_lang, target_lang_full)
 
     # Detect source language if auto
+    source_lang_code = source_lang  # preserve original code for TVDB lookup
     try:
         if source_lang == "auto":
             detected = detect_language(
@@ -147,6 +148,7 @@ def translate_file(
                 cancel_event=_cancel_event, skip_event=_skip_event,
             )
             source_lang = detected.get("language", "Unknown")
+            source_lang_code = detected.get("code", source_lang_code)
             logger.info("Auto-detected source language: %s", source_lang)
         else:
             source_lang = resolve_language(source_lang)
@@ -157,6 +159,27 @@ def translate_file(
     except InterruptedError:
         _cleanup_temp_files()
         raise TranslationSkipped()
+
+    # Build TVDB context if API key is configured
+    tvdb_context: str | None = None
+    tvdb_api_key = config.get("tvdb_api_key")
+    if tvdb_api_key:
+        try:
+            from sublingo.services.tvdb_client import TVDBClient
+            from sublingo.services.tvdb_context import build_tvdb_context
+
+            # Reuse client across files if stored on config
+            tvdb_client = config.get("_tvdb_client")
+            if tvdb_client is None:
+                tvdb_client = TVDBClient(tvdb_api_key)
+                config["_tvdb_client"] = tvdb_client
+            tvdb_context = build_tvdb_context(
+                tvdb_client, input_path.name, source_lang_code, target_lang,
+            )
+            if tvdb_context:
+                logger.info("TVDB context loaded for %s", input_path.name)
+        except Exception:
+            logger.debug("TVDB lookup failed, continuing without context", exc_info=True)
 
     # Batch and translate
     batches = create_batches(entries, batch_size)
@@ -196,6 +219,7 @@ def translate_file(
                     keep_names=keep_names,
                     cancel_event=_cancel_event,
                     skip_event=_skip_event,
+                    tvdb_context=tvdb_context,
                 )
             except KeyboardInterrupt:
                 cancelled = True

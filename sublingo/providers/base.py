@@ -30,14 +30,16 @@ Rules:
 - Do not add or remove subtitle entries
 {keep_names_rule}\
 - Respond ONLY with a JSON array of objects, each with "index" and "text" keys
-"""
+{tvdb_context}"""
 
 KEEP_NAMES_RULE = "- Do NOT translate personal names or place names — keep them in their original form\n"
 
 
-def build_system_prompt(keep_names: bool = False) -> str:
+def build_system_prompt(keep_names: bool = False, tvdb_context: str | None = None) -> str:
+    ctx_block = f"\n{tvdb_context}\n" if tvdb_context else ""
     return SYSTEM_PROMPT_BASE.format(
         keep_names_rule=KEEP_NAMES_RULE if keep_names else "",
+        tvdb_context=ctx_block,
     )
 
 USER_PROMPT_TEMPLATE = """\
@@ -157,6 +159,7 @@ class BaseLLMProvider(ABC):
         keep_names: bool = False,
         cancel_event: threading.Event | None = None,
         skip_event: threading.Event | None = None,
+        tvdb_context: str | None = None,
     ) -> list[dict[str, Any]]:
         """Translate a batch of subtitle entries.
 
@@ -168,11 +171,12 @@ class BaseLLMProvider(ABC):
             keep_names: If True, do not translate personal/place names
             cancel_event: Event to signal quit (pressed q)
             skip_event: Event to signal skip (pressed s)
+            tvdb_context: Optional TVDB context string for the system prompt
 
         Returns:
             List of {"index": int, "text": str} dicts with translations
         """
-        system_prompt = build_system_prompt(keep_names=keep_names)
+        system_prompt = build_system_prompt(keep_names=keep_names, tvdb_context=tvdb_context)
         user_prompt = USER_PROMPT_TEMPLATE.format(
             source_lang=source_lang,
             target_lang=target_lang,

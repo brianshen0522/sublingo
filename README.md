@@ -149,6 +149,26 @@ Temp files (extracted subtitles from video) are automatically cleaned up on skip
 
 Video files (.mkv, .mp4, .avi, .webm, .mov) are also supported — subtitles are extracted via ffmpeg automatically. Extracted subtitle files are cleaned up after translation unless `--debug` is used.
 
+## TVDB Integration (Optional)
+
+When translating TV series subtitles, you can optionally provide a [TVDB](https://thetvdb.com/) API key to fetch series and episode descriptions in the target language. This gives the LLM context about the show — improving translation of character names, place names, and cultural references.
+
+1. Get a free API key at [thetvdb.com/api-information](https://thetvdb.com/api-information)
+2. Set it in your `.env` file:
+   ```bash
+   SUBLINGO_TVDB_API_KEY=your-tvdb-api-key
+   ```
+
+The feature works automatically when subtitle filenames follow common naming conventions:
+
+| Format | Example |
+| ------ | ------- |
+| Sonarr style | `South Park - S01E01 - Cartman Gets an Anal Probe.srt` |
+| Dot-separated | `South.Park.S01E01.720p.BluRay.srt` |
+| Numbered | `South Park 1x01.srt` |
+
+Use `--debug` to see the TVDB context injected into the system prompt. If no API key is set, or the series/episode is not found, translation proceeds normally without TVDB context.
+
 ## Development
 
 ```bash

@@ -19,6 +19,7 @@ DEFAULTS: dict[str, Any] = {
     "bilingual": False,
     "output_format": None,  # None means same as input
     "verbose": False,
+    "tvdb_api_key": None,
 }
 
 
@@ -40,6 +41,7 @@ def build_config(
         "SUBLINGO_BATCH_SIZE": "batch_size",
         "SUBLINGO_SOURCE_LANGUAGE": "source_language",
         "SUBLINGO_TARGET_LANGUAGE": "target_language",
+        "SUBLINGO_TVDB_API_KEY": "tvdb_api_key",
     }
     for env_key, cfg_key in env_map.items():
         val = os.environ.get(env_key)
